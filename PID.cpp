@@ -1,6 +1,6 @@
-#include "PID.h"
-
 /**
+ * @author Nick Mosher, <codewhisperer97@gmail.com>
+ *
  * A PID Controller is a method of system control in which a correctional output
  * is generated to guide the system toward a desired setpoint (aka target).
  * The PID Controller calculates the output based on the following factors:
@@ -30,7 +30,7 @@
  *    feedback to the target.  Depending on the scale of the physical system
  *    and the precision of feedback (e.g. sensors), the proportional component
  *    alone is likely not sufficient to provide adequate power (e.g. to motors)
- *    to guide the system in regards to small-scale correction.  The Integral
+ *    to guide the system in regards to small-scale corrections.  The Integral
  *    component integrates the error of the system (target - feedback) over
  *    time.  If the system reaches a point where it is close but not exactly
  *    on top of the target, the integration will slowly build until it is
@@ -52,6 +52,20 @@
  * components.
  *
  *    PID output = Proportional component + Integral component + Derivative component
+ */
+
+#include "PID.h"
+
+/**
+ * Constructs the PIDController object with PID Gains and function pointers
+ * for retrieving feedback (pidSource) and delivering output (pidOutput).
+ * All PID gains should be positive, otherwise the system will violently diverge
+ * from the target.
+ * @param p The Proportional gain.
+ * @param i The Integral gain.
+ * @param d The Derivative gain.
+ * @param (*pidSource) The function pointer for retrieving system feedback.
+ * @param (*pidOutput) The function pointer for delivering system output.
  */
 PIDController::PIDController(double p, double i, double d, int (*pidSource)(), void (*pidOutput)(int output))
 {
