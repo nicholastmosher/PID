@@ -11,8 +11,8 @@
  *
  * The gain values act as multipliers for their corresponding components of PID
  * (more detail later).  The target is the value which the system strives to
- * reach by manipulating the output.  The feedback is the representation of the
- * system's current standing in its environment.
+ * reach by manipulating the output.  The feedback is the system's actual
+ * position or status in regards to the physical world.
  * Another important term in PID is "error", which refers to the difference
  * between the target and the feedback.
  *
@@ -43,13 +43,12 @@
  *          summation of the system's error, updated at each tick.
  *
  *    The Derivative component measures the rate of change of the feedback.
- *    It can add strength to the output if the feedback is approaching the
- *    target too slowly or reduce the strength of the output if it's approaching
- *    too quickly.
+ *    It can reduce the strength of the output if the feedback is approaching
+ *    the target too quickly or if the feedback is moving away from the target.
  *
  *        Derivative component = (D Gain) * ((error - lastError) / time - lastTime)
  */
-PIDController::PIDController(double p, double i, double d, int (*getFeedback)(), void (*onUpdate)(int output))
+PIDController::PIDController(double p, double i, double d, int (*pidSource)(), void (*pidOutput)(int output))
 {
   _p = p;
   _i = i;
@@ -70,9 +69,9 @@ PIDController::PIDController(double p, double i, double d, int (*getFeedback)(),
   outputBounded = false;
   outputLowerBound = 0;
   outputUpperBound = 0;
-  timeInputRegistered = false;
-  _getFeedback = getFeedback;
-  _onUpdate = onUpdate;
+  timeFunctionRegistered = false;
+  _pidSource = pidSource;
+  _pidOutput = pidOutput;
 }
 
 /**
@@ -85,7 +84,7 @@ PIDController::PIDController(double p, double i, double d, int (*getFeedback)(),
 void PIDController::tick()
 {
   //Retrieve system feedback from user callback.
-  currentFeedback = _getFeedback();
+  currentFeedback = _pidSource();
 
   //Apply input bounds if necessary.
   if(inputBounded)
@@ -94,28 +93,35 @@ void PIDController::tick()
     if(currentFeedback < inputLowerBound) currentFeedback = inputLowerBound;
   }
 
-  int cycleDerivative;
+  //Calculate the error between the feedback and the target.
+  error = target - currentFeedback;
 
   //If we have a registered way to retrieve the system time, use time in PID calculations.
-  if(timeInputRegistered)
+  if(timeFunctionRegistered)
   {
     //Retrieve system time
     currentTime = _getSystemTime();
 
+    //Calculate time since last tick() cycle.
+    long deltaTime = currentTime - lastTime;
+
     //Calculate the integral of the feedback data since last cycle.
-    int cycleIntegral = ((lastError + error()) / 2) * deltaTime();
+    int cycleIntegral = (lastError + error / 2) * deltaTime;
 
     //Add this cycle's integral to the integral cumulation.
     integralCumulation += cycleIntegral;
 
     //Calculate the slope of the line with data from the current and last cycles.
-    cycleDerivative = (error() - lastError) / deltaTime();
+    cycleDerivative = (error - lastError) / deltaTime;
+
+    //Save time data for next iteration.
+    lastTime = currentTime;
   }
   //If we have no way to retrieve system time, estimate calculations.
   else
   {
-    integralCumulation += error();
-    cycleDerivative = (error() - lastError);
+    integralCumulation += error;
+    cycleDerivative = (error - lastError);
   }
 
   //Prevent the integral cumulation from becoming overwhelmingly huge.
@@ -123,12 +129,11 @@ void PIDController::tick()
   if(integralCumulation < -maxCumulation) integralCumulation = -maxCumulation;
 
   //Calculate the system output based on data and PID gains.
-  output = (int) ((error() * _p) + (integralCumulation * _i) + (cycleDerivative * _d));
+  output = (int) ((error * _p) + (integralCumulation * _i) + (cycleDerivative * _d));
 
   //Save a record of this iteration's data.
-  lastTime = currentTime;
   lastFeedback = currentFeedback;
-  lastError = error();
+  lastError = error;
 
   //Trim the output to the bounds if needed.
   if(outputBounded)
@@ -137,7 +142,7 @@ void PIDController::tick()
     if(output < outputLowerBound) output = outputLowerBound;
   }
 
-  _onUpdate(output);
+  _pidOutput(output);
 }
 
 /**
@@ -168,6 +173,78 @@ int PIDController::getTarget()
 int PIDController::getOutput()
 {
   return output;
+}
+
+/**
+ * Returns the last read feedback of this PIDController.
+ */
+int PIDController::getFeedback()
+{
+  return currentFeedback;
+}
+
+/**
+ * Returns the value that the Proportional component is contributing to the output.
+ * @return The value that the Proportional component is contributing to the output.
+ */
+int PIDController::getProportionalComponent()
+{
+  return (int) (error * _p);
+}
+
+/**
+ * Returns the value that the Integral component is contributing to the output.
+ * @return The value that the Integral component is contributing to the output.
+ */
+int PIDController::getIntegralComponent()
+{
+  return (int) (integralCumulation * _i);
+}
+
+/**
+ * Returns the value that the Derivative component is contributing to the output.
+ * @return The value that the Derivative component is contributing to the output.
+ */
+int PIDController::getDerivativeComponent()
+{
+  return (int) (cycleDerivative * _d);
+}
+
+/**
+ * Sets the maximum value that the integral cumulation can reach.
+ * @param max The maximum value of the integral cumulation.
+ */
+void PIDController::setMaxIntegralCumulation(int max)
+{
+  //If the new max value is less than 0, invert to make positive.
+  if(max < 0)
+  {
+    max = -max;
+  }
+
+  //If the new max is not more than 1 then the cumulation is useless.
+  if(max > 1)
+  {
+    maxCumulation = max;
+  }
+}
+
+/**
+ * Returns the maximum value that the integral value can cumulate to.
+ * @return The maximum value that the integral value can cumulate to.
+ */
+int PIDController::getMaxIntegralCumulation()
+{
+  return maxCumulation;
+}
+
+/**
+ * Returns the current cumulative integral value in this PIDController.
+ * @return The current cumulative integral value in this PIDController.
+ */
+int PIDController::getIntegralCumulation()
+{
+  return integralCumulation;
 }
 
 /**
@@ -362,9 +439,9 @@ double PIDController::getD()
  *
  * @param (*getFeedback) A function pointer that retrieves system feedback.
  */
-void PIDController::setPIDSource(int (*getFeedback)())
+void PIDController::setPIDSource(int (*pidSource)())
 {
-  _getFeedback = getFeedback;
+  _pidSource = pidSource;
 }
 
 /**
@@ -383,9 +460,9 @@ void PIDController::setPIDSource(int (*getFeedback)())
  *
  * @param (*onUpdate) A function pointer that delivers system output.
  */
-void PIDController::setPIDOutput(void (*onUpdate)(int output))
+void PIDController::setPIDOutput(void (*pidOutput)(int output))
 {
-  _onUpdate = onUpdate;
+  _pidOutput = pidOutput;
 }
 
 /**
@@ -401,42 +478,8 @@ void PIDController::setPIDOutput(void (*onUpdate)(int output))
  *
  * @param (*getSystemTime) Pointer to a function that returns system time.
  */
-void PIDController::registerTimeInput(unsigned long (*getSystemTime)())
+void PIDController::registerTimeFunction(unsigned long (*getSystemTime)())
 {
   _getSystemTime = getSystemTime;
-  // if(_getSystemTime != NULL)
-  // {
-  //   timeInputRegistered = true;
-  // }
-  //FIXME find a way to empty _getSystemTime pointer
-}
-
-/**
- * Notifies the PIDController that it should no longer use time while
- * calculating output.
- */
-void PIDController::unregisterTimeInput()
-{
-  // _getSystemTime = NULL;
-  //FIXME find a way to empty _getSystemTime pointer
-  timeInputRegistered = false;
-}
-
-/**
- * Calculates the error in this PID system.  The error is defined as the
- * difference between the target (where the system wants to be) and the
- * feedback (where the system is right now).
- */
-int PIDController::error()
-{
-  return currentFeedback - target;
-}
-
-/**
- * Returns the difference between the last recorded time and the current time.
- * @return The difference between the last recorded time and the current time.
- */
-long PIDController::deltaTime()
-{
-  return currentTime - lastTime;
+  timeFunctionRegistered = true;
 }

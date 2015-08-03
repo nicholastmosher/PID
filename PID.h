@@ -5,13 +5,18 @@
 class PIDController
 {
 public:
-
-  PIDController(double p, double i, double d, int (*getFeedback)(), void (*onUpdate)(int output));
+  PIDController(double p, double i, double d, int (*pidSource)(), void (*pidOutput)(int output));
   void tick();
   void setTarget(int t);
   int getTarget();
   int getOutput();
   int getFeedback();
+  int getProportionalComponent();
+  void setMaxIntegralCumulation(int max);
+  int getMaxIntegralCumulation();
+  int getIntegralCumulation();
+  int getIntegralComponent();
+  int getDerivativeComponent();
   void setInputBounded(bool bounded);
   void setOutputBounded(bool bounded);
   bool isInputBounded();
@@ -29,10 +34,9 @@ public:
   double getP();
   double getI();
   double getD();
-  void setPIDSource(int (*getFeedback)());
-  void setPIDOutput(void (*onUpdate)(int output));
-  void registerTimeInput(unsigned long (*getSystemTime)());
-  void unregisterTimeInput();
+  void setPIDSource(int (*pidSource)());
+  void setPIDOutput(void (*pidOutput)(int output));
+  void registerTimeFunction(unsigned long (*getSystemTime)());
 
 private:
 
@@ -43,21 +47,21 @@ private:
   int output;
   int currentFeedback;
   int lastFeedback;
+  int error;
   int lastError;
   long currentTime;
   long lastTime;
   int integralCumulation;
   int maxCumulation;
+  int cycleDerivative;
   bool inputBounded;
   bool outputBounded;
   int inputLowerBound;
   int inputUpperBound;
   int outputLowerBound;
   int outputUpperBound;
-  bool timeInputRegistered;
-  int error();
-  long deltaTime();
-  int (*_getFeedback)();
-  void (*_onUpdate)(int output);
+  bool timeFunctionRegistered;
+  int (*_pidSource)();
+  void (*_pidOutput)(int output);
   unsigned long (*_getSystemTime)();
 };
