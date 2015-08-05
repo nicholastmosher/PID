@@ -37,9 +37,7 @@ public:
   void setPIDSource(int (*pidSource)());
   void setPIDOutput(void (*pidOutput)(int output));
   void registerTimeFunction(unsigned long (*getSystemTime)());
-
 private:
-
   double _p;
   double _i;
   double _d;
