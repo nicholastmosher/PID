@@ -12,21 +12,28 @@ public:
   int getOutput();
   int getFeedback();
   int getProportionalComponent();
+  int getIntegralComponent();
+  int getDerivativeComponent();
   void setMaxIntegralCumulation(int max);
   int getMaxIntegralCumulation();
   int getIntegralCumulation();
-  int getIntegralComponent();
-  int getDerivativeComponent();
+
   void setInputBounded(bool bounded);
-  void setOutputBounded(bool bounded);
   bool isInputBounded();
-  bool isOutputBounded();
   void setInputBounds(int lower, int upper);
-  void setOutputBounds(int lower, int upper);
   int getInputLowerBound();
   int getInputUpperBound();
+  void setOutputBounded(bool bounded);
+  bool isOutputBounded();
+  void setOutputBounds(int lower, int upper);
   int getOutputLowerBound();
   int getOutputUpperBound();
+  void setFeedbackWrapped(bool wrap);
+  bool isFeedbackWrapped();
+  void setFeedbackWrapBounds(int lower, int upper);
+  int getFeedbackWrapLowerBound();
+  int getFeedbackWrapUpperBound();
+
   void setPID(double p, double i, double d);
   void setP(double p);
   void setI(double i);
@@ -52,12 +59,17 @@ private:
   int integralCumulation;
   int maxCumulation;
   int cycleDerivative;
+  
   bool inputBounded;
-  bool outputBounded;
   int inputLowerBound;
   int inputUpperBound;
+  bool outputBounded;
   int outputLowerBound;
   int outputUpperBound;
+  bool feedbackWrapped;
+  int feedbackWrapLowerBound;
+  int feedbackWrapUpperBound;
+
   bool timeFunctionRegistered;
   int (*_pidSource)();
   void (*_pidOutput)(int output);

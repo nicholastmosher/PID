@@ -112,8 +112,56 @@ void PIDController::tick()
     if(currentFeedback < inputLowerBound) currentFeedback = inputLowerBound;
   }
 
-  //Calculate the error between the feedback and the target.
-  error = target - currentFeedback;
+  /*
+   * Feedback wrapping causes two distant numbers to appear adjacent to one
+   * another for the purpose of calculating the system's error.
+   */
+  if(feedbackWrapped)
+  {
+    /*
+     * There are three ways to traverse from one point to another in this setup.
+     *
+     *    1)  Target --> Feedback
+     *
+     * The other two ways involve bridging a gap connected by the upper and
+     * lower bounds of the feedback wrap.
+     *
+     *    2)  Target --> Upper Bound == Lower Bound --> Feedback
+     *
+     *    3)  Target --> Lower Bound == Upper Bound --> Feedback
+     *
+     * Of these three paths, one should always be shorter than the other two,
+     * unless all three are equal, in which case it does not matter which path
+     * is taken.
+     */
+    int regErr = target - currentFeedback;
+    int altErr1 = (target - feedbackWrapLowerBound) + (feedbackWrapUpperBound - currentFeedback);
+    int altErr2 = (feedbackWrapUpperBound - target) + (currentFeedback - feedbackWrapLowerBound);
+
+    //Calculate the absolute values of each error.
+    int regErrAbs = (regErr >= 0) ? regErr : -regErr;
+    int altErr1Abs = (altErr1 >= 0) ? altErr1 : -altErr1;
+    int altErr2Abs = (altErr2 >= 0) ? altErr2 : -altErr2;
+
+    //Use the error with the smallest absolute value
+    if(regErrAbs <= altErr1Abs && regErr <= altErr2Abs) //If reguErrAbs is smallest
+    {
+      error = regErr;
+    }
+    else if(altErr1Abs < regErrAbs && altErr1Abs < altErr2Abs) //If altErr1Abs is smallest
+    {
+      error = altErr1Abs;
+    }
+    else if(altErr2Abs < regErrAbs && altErr2Abs < altErr1Abs) //If altErr2Abs is smallest
+    {
+      error = altErr2Abs;
+    }
+  }
+  else
+  {
+    //Calculate the error between the feedback and the target.
+    error = target - currentFeedback;
+  }
 
   //If we have a registered way to retrieve the system time, use time in PID calculations.
   if(timeFunctionRegistered)
@@ -278,31 +326,12 @@ void PIDController::setInputBounded(bool bounded)
 }
 
 /**
- * Enables or disables bounds on the output.  Bounds limit the upper and lower
- * values that this PIDController will ever generate as output.
- * @param bounded True to enable output bounds, False to disable.
- */
-void PIDController::setOutputBounded(bool bounded)
-{
-  outputBounded = bounded;
-}
-
-/**
  * Returns whether the input of this PIDController is being bounded.
  * @return True if the input of this PIDController is being bounded.
  */
 bool PIDController::isInputBounded()
 {
   return inputBounded;
-}
-
-/**
- * Returns whether the output of this PIDController is being bounded.
- * @return True if the output of this PIDController is being bounded.
- */
-bool PIDController::isOutputBounded()
-{
-  return outputBounded;
 }
 
 /**
@@ -319,23 +348,6 @@ void PIDController::setInputBounds(int lower, int upper)
     inputBounded = true;
     inputUpperBound = upper;
     inputLowerBound = lower;
-  }
-}
-
-/**
- * Sets bounds which limit the lower and upper extremes that this PIDController
- * will ever generate as output.  Setting output bounds automatically enables
- * output bounds.
- * @param lower The lower output bound.
- * @param upper The upper output bound.
- */
-void PIDController::setOutputBounds(int lower, int upper)
-{
-  if(upper > lower)
-  {
-    outputBounded = true;
-    outputLowerBound = lower;
-    outputUpperBound = upper;
   }
 }
 
@@ -358,6 +370,42 @@ int PIDController::getInputUpperBound()
 }
 
 /**
+ * Enables or disables bounds on the output.  Bounds limit the upper and lower
+ * values that this PIDController will ever generate as output.
+ * @param bounded True to enable output bounds, False to disable.
+ */
+void PIDController::setOutputBounded(bool bounded)
+{
+  outputBounded = bounded;
+}
+
+/**
+ * Returns whether the output of this PIDController is being bounded.
+ * @return True if the output of this PIDController is being bounded.
+ */
+bool PIDController::isOutputBounded()
+{
+  return outputBounded;
+}
+
+/**
+ * Sets bounds which limit the lower and upper extremes that this PIDController
+ * will ever generate as output.  Setting output bounds automatically enables
+ * output bounds.
+ * @param lower The lower output bound.
+ * @param upper The upper output bound.
+ */
+void PIDController::setOutputBounds(int lower, int upper)
+{
+  if(upper > lower)
+  {
+    outputBounded = true;
+    outputLowerBound = lower;
+    outputUpperBound = upper;
+  }
+}
+
+/**
  * Returns the lower output bound of this PIDController.
  * @return The lower output bound of this PIDController.
  */
@@ -373,6 +421,62 @@ int PIDController::getOutputLowerBound()
 int PIDController::getOutputUpperBound()
 {
   return outputUpperBound;
+}
+
+/**
+ * Enables or disables feedback wrapping.
+ * Feedback wrapping causes the upper and lower bounds to appear adjacent to
+ * one another when calculating system error.  This can be useful for rotating
+ * systems which use degrees as units.  For example, wrapping the bounds
+ * [0, 360] will cause a target of 5 and a feedback of 355 to produce an error
+ * of -10 rather than 350.
+ * @param wrapped True to enable feedback wrapping, False to disable.
+ */
+void PIDController::setFeedbackWrapped(bool wrapped)
+{
+  feedbackWrapped = wrapped;
+}
+
+/**
+ * Returns whether this PIDController has feedback wrap.
+ * @return Whether this PIDController has feedback wrap.
+ */
+bool PIDController::isFeedbackWrapped()
+{
+  return feedbackWrapped;
+}
+
+/**
+ * Sets the bounds which the feedback wraps around.
+ * @param lower The lower wrap bound.
+ * @param upper The upper wrap bound.
+ */
+void PIDController::setFeedbackWrapBounds(int lower, int upper)
+{
+  //Make sure no value outside this circular range is ever input.
+  setInputBounds(lower, upper);
+
+  feedbackWrapped = true;
+  feedbackWrapLowerBound = lower;
+  feedbackWrapUpperBound = upper;
+}
+
+/**
+ * Returns the lower feedback wrap bound.
+ * @return The lower feedback wrap bound.
+ */
+int PIDController::getFeedbackWrapLowerBound()
+{
+  return feedbackWrapLowerBound;
+}
+
+/**
+ * Returns the upper feedback wrap bound.
+ * @return The upper feedback wrap bound.
+ */
+int PIDController::getFeedbackWrapUpperBound()
+{
+  return feedbackWrapUpperBound;
 }
 
 /**
