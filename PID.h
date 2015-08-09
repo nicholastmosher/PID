@@ -11,6 +11,9 @@ public:
   int getTarget();
   int getOutput();
   int getFeedback();
+  int getError();
+  void setEnabled(bool e);
+  bool isEnabled();
   int getProportionalComponent();
   int getIntegralComponent();
   int getDerivativeComponent();
@@ -50,6 +53,7 @@ private:
   double _d;
   int target;
   int output;
+  bool enabled;
   int currentFeedback;
   int lastFeedback;
   int error;
@@ -59,7 +63,7 @@ private:
   int integralCumulation;
   int maxCumulation;
   int cycleDerivative;
-  
+
   bool inputBounded;
   int inputLowerBound;
   int inputUpperBound;

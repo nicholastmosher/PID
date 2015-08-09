@@ -74,6 +74,7 @@ PIDController::PIDController(double p, double i, double d, int (*pidSource)(), v
   _d = d;
   target = 0;
   output = 0;
+  enabled = true;
   currentFeedback = 0;
   lastFeedback = 0;
   lastError = 0;
@@ -102,114 +103,117 @@ PIDController::PIDController(double p, double i, double d, int (*pidSource)(), v
  */
 void PIDController::tick()
 {
-  //Retrieve system feedback from user callback.
-  currentFeedback = _pidSource();
-
-  //Apply input bounds if necessary.
-  if(inputBounded)
+  if(enabled)
   {
-    if(currentFeedback > inputUpperBound) currentFeedback = inputUpperBound;
-    if(currentFeedback < inputLowerBound) currentFeedback = inputLowerBound;
-  }
+    //Retrieve system feedback from user callback.
+    currentFeedback = _pidSource();
 
-  /*
-   * Feedback wrapping causes two distant numbers to appear adjacent to one
-   * another for the purpose of calculating the system's error.
-   */
-  if(feedbackWrapped)
-  {
+    //Apply input bounds if necessary.
+    if(inputBounded)
+    {
+      if(currentFeedback > inputUpperBound) currentFeedback = inputUpperBound;
+      if(currentFeedback < inputLowerBound) currentFeedback = inputLowerBound;
+    }
+
     /*
-     * There are three ways to traverse from one point to another in this setup.
-     *
-     *    1)  Target --> Feedback
-     *
-     * The other two ways involve bridging a gap connected by the upper and
-     * lower bounds of the feedback wrap.
-     *
-     *    2)  Target --> Upper Bound == Lower Bound --> Feedback
-     *
-     *    3)  Target --> Lower Bound == Upper Bound --> Feedback
-     *
-     * Of these three paths, one should always be shorter than the other two,
-     * unless all three are equal, in which case it does not matter which path
-     * is taken.
+     * Feedback wrapping causes two distant numbers to appear adjacent to one
+     * another for the purpose of calculating the system's error.
      */
-    int regErr = target - currentFeedback;
-    int altErr1 = (target - feedbackWrapLowerBound) + (feedbackWrapUpperBound - currentFeedback);
-    int altErr2 = (feedbackWrapUpperBound - target) + (currentFeedback - feedbackWrapLowerBound);
-
-    //Calculate the absolute values of each error.
-    int regErrAbs = (regErr >= 0) ? regErr : -regErr;
-    int altErr1Abs = (altErr1 >= 0) ? altErr1 : -altErr1;
-    int altErr2Abs = (altErr2 >= 0) ? altErr2 : -altErr2;
-
-    //Use the error with the smallest absolute value
-    if(regErrAbs <= altErr1Abs && regErr <= altErr2Abs) //If reguErrAbs is smallest
+    if(feedbackWrapped)
     {
-      error = regErr;
+      /*
+       * There are three ways to traverse from one point to another in this setup.
+       *
+       *    1)  Target --> Feedback
+       *
+       * The other two ways involve bridging a gap connected by the upper and
+       * lower bounds of the feedback wrap.
+       *
+       *    2)  Target --> Upper Bound == Lower Bound --> Feedback
+       *
+       *    3)  Target --> Lower Bound == Upper Bound --> Feedback
+       *
+       * Of these three paths, one should always be shorter than the other two,
+       * unless all three are equal, in which case it does not matter which path
+       * is taken.
+       */
+      int regErr = target - currentFeedback;
+      int altErr1 = (target - feedbackWrapLowerBound) + (feedbackWrapUpperBound - currentFeedback);
+      int altErr2 = (feedbackWrapUpperBound - target) + (currentFeedback - feedbackWrapLowerBound);
+
+      //Calculate the absolute values of each error.
+      int regErrAbs = (regErr >= 0) ? regErr : -regErr;
+      int altErr1Abs = (altErr1 >= 0) ? altErr1 : -altErr1;
+      int altErr2Abs = (altErr2 >= 0) ? altErr2 : -altErr2;
+
+      //Use the error with the smallest absolute value
+      if(regErrAbs <= altErr1Abs && regErr <= altErr2Abs) //If reguErrAbs is smallest
+      {
+        error = regErr;
+      }
+      else if(altErr1Abs < regErrAbs && altErr1Abs < altErr2Abs) //If altErr1Abs is smallest
+      {
+        error = altErr1Abs;
+      }
+      else if(altErr2Abs < regErrAbs && altErr2Abs < altErr1Abs) //If altErr2Abs is smallest
+      {
+        error = altErr2Abs;
+      }
     }
-    else if(altErr1Abs < regErrAbs && altErr1Abs < altErr2Abs) //If altErr1Abs is smallest
+    else
     {
-      error = altErr1Abs;
+      //Calculate the error between the feedback and the target.
+      error = target - currentFeedback;
     }
-    else if(altErr2Abs < regErrAbs && altErr2Abs < altErr1Abs) //If altErr2Abs is smallest
+
+    //If we have a registered way to retrieve the system time, use time in PID calculations.
+    if(timeFunctionRegistered)
     {
-      error = altErr2Abs;
+      //Retrieve system time
+      currentTime = _getSystemTime();
+
+      //Calculate time since last tick() cycle.
+      long deltaTime = currentTime - lastTime;
+
+      //Calculate the integral of the feedback data since last cycle.
+      int cycleIntegral = (lastError + error / 2) * deltaTime;
+
+      //Add this cycle's integral to the integral cumulation.
+      integralCumulation += cycleIntegral;
+
+      //Calculate the slope of the line with data from the current and last cycles.
+      cycleDerivative = (error - lastError) / deltaTime;
+
+      //Save time data for next iteration.
+      lastTime = currentTime;
     }
+    //If we have no way to retrieve system time, estimate calculations.
+    else
+    {
+      integralCumulation += error;
+      cycleDerivative = (error - lastError);
+    }
+
+    //Prevent the integral cumulation from becoming overwhelmingly huge.
+    if(integralCumulation > maxCumulation) integralCumulation = maxCumulation;
+    if(integralCumulation < -maxCumulation) integralCumulation = -maxCumulation;
+
+    //Calculate the system output based on data and PID gains.
+    output = (int) ((error * _p) + (integralCumulation * _i) + (cycleDerivative * _d));
+
+    //Save a record of this iteration's data.
+    lastFeedback = currentFeedback;
+    lastError = error;
+
+    //Trim the output to the bounds if needed.
+    if(outputBounded)
+    {
+      if(output > outputUpperBound) output = outputUpperBound;
+      if(output < outputLowerBound) output = outputLowerBound;
+    }
+
+    _pidOutput(output);
   }
-  else
-  {
-    //Calculate the error between the feedback and the target.
-    error = target - currentFeedback;
-  }
-
-  //If we have a registered way to retrieve the system time, use time in PID calculations.
-  if(timeFunctionRegistered)
-  {
-    //Retrieve system time
-    currentTime = _getSystemTime();
-
-    //Calculate time since last tick() cycle.
-    long deltaTime = currentTime - lastTime;
-
-    //Calculate the integral of the feedback data since last cycle.
-    int cycleIntegral = (lastError + error / 2) * deltaTime;
-
-    //Add this cycle's integral to the integral cumulation.
-    integralCumulation += cycleIntegral;
-
-    //Calculate the slope of the line with data from the current and last cycles.
-    cycleDerivative = (error - lastError) / deltaTime;
-
-    //Save time data for next iteration.
-    lastTime = currentTime;
-  }
-  //If we have no way to retrieve system time, estimate calculations.
-  else
-  {
-    integralCumulation += error;
-    cycleDerivative = (error - lastError);
-  }
-
-  //Prevent the integral cumulation from becoming overwhelmingly huge.
-  if(integralCumulation > maxCumulation) integralCumulation = maxCumulation;
-  if(integralCumulation < -maxCumulation) integralCumulation = -maxCumulation;
-
-  //Calculate the system output based on data and PID gains.
-  output = (int) ((error * _p) + (integralCumulation * _i) + (cycleDerivative * _d));
-
-  //Save a record of this iteration's data.
-  lastFeedback = currentFeedback;
-  lastError = error;
-
-  //Trim the output to the bounds if needed.
-  if(outputBounded)
-  {
-    if(output > outputUpperBound) output = outputUpperBound;
-    if(output < outputLowerBound) output = outputLowerBound;
-  }
-
-  _pidOutput(output);
 }
 
 /**
@@ -244,10 +248,44 @@ int PIDController::getOutput()
 
 /**
  * Returns the last read feedback of this PIDController.
+ * @return The
  */
 int PIDController::getFeedback()
 {
   return currentFeedback;
+}
+
+/**
+ * Returns the last calculated error of this PIDController.
+ * @return The last calculated error of this PIDController.
+ */
+int PIDController::getError()
+{
+  return error;
+}
+
+/**
+ * Enables or disables this PIDController.
+ * @param True to enable, False to disable.
+ */
+void PIDController::setEnabled(bool e)
+{
+  //If the PIDController was enabled and is being disabled.
+  if(!e && enabled)
+  {
+    output = 0;
+    integralCumulation = 0;
+  }
+  enabled = e;
+}
+
+/**
+ * Tells whether this PIDController is enabled.
+ * @return True for enabled, false for disabled.
+ */
+bool PIDController::isEnabled()
+{
+  return enabled;
 }
 
 /**
@@ -447,7 +485,9 @@ bool PIDController::isFeedbackWrapped()
 }
 
 /**
- * Sets the bounds which the feedback wraps around.
+ * Sets the bounds which the feedback wraps around. This
+ * also enables Input Bounds at the same coordinates to
+ * prevent extraneous domain errors.
  * @param lower The lower wrap bound.
  * @param upper The upper wrap bound.
  */
