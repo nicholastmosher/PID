@@ -2,40 +2,41 @@
 #define PID_H
 #endif
 
+template <class T>
 class PIDController
 {
 public:
-  PIDController(double p, double i, double d, int (*pidSource)(), void (*pidOutput)(int output));
+  PIDController(double p, double i, double d, T (*pidSource)(), void (*pidOutput)(T output));
   void tick();
-  void setTarget(int t);
-  int getTarget();
-  int getOutput();
-  int getFeedback();
-  int getError();
+  void setTarget(T t);
+  T getTarget();
+  T getOutput();
+  T getFeedback();
+  T getError();
   void setEnabled(bool e);
   bool isEnabled();
-  int getProportionalComponent();
-  int getIntegralComponent();
-  int getDerivativeComponent();
-  void setMaxIntegralCumulation(int max);
-  int getMaxIntegralCumulation();
-  int getIntegralCumulation();
+  T getProportionalComponent();
+  T getIntegralComponent();
+  T getDerivativeComponent();
+  void setMaxIntegralCumulation(T max);
+  T getMaxIntegralCumulation();
+  T getIntegralCumulation();
 
   void setInputBounded(bool bounded);
   bool isInputBounded();
-  void setInputBounds(int lower, int upper);
-  int getInputLowerBound();
-  int getInputUpperBound();
+  void setInputBounds(T lower, T upper);
+  T getInputLowerBound();
+  T getInputUpperBound();
   void setOutputBounded(bool bounded);
   bool isOutputBounded();
-  void setOutputBounds(int lower, int upper);
-  int getOutputLowerBound();
-  int getOutputUpperBound();
+  void setOutputBounds(T lower, T upper);
+  T getOutputLowerBound();
+  T getOutputUpperBound();
   void setFeedbackWrapped(bool wrap);
   bool isFeedbackWrapped();
-  void setFeedbackWrapBounds(int lower, int upper);
-  int getFeedbackWrapLowerBound();
-  int getFeedbackWrapUpperBound();
+  void setFeedbackWrapBounds(T lower, T upper);
+  T getFeedbackWrapLowerBound();
+  T getFeedbackWrapUpperBound();
 
   void setPID(double p, double i, double d);
   void setP(double p);
@@ -44,38 +45,38 @@ public:
   double getP();
   double getI();
   double getD();
-  void setPIDSource(int (*pidSource)());
-  void setPIDOutput(void (*pidOutput)(int output));
+  void setPIDSource(T (*pidSource)());
+  void setPIDOutput(void (*pidOutput)(T output));
   void registerTimeFunction(unsigned long (*getSystemTime)());
 private:
   double _p;
   double _i;
   double _d;
-  int target;
-  int output;
+  T target;
+  T output;
   bool enabled;
-  int currentFeedback;
-  int lastFeedback;
-  int error;
-  int lastError;
+  T currentFeedback;
+  T lastFeedback;
+  T error;
+  T lastError;
   long currentTime;
   long lastTime;
-  int integralCumulation;
-  int maxCumulation;
-  int cycleDerivative;
+  T integralCumulation;
+  T maxCumulation;
+  T cycleDerivative;
 
   bool inputBounded;
-  int inputLowerBound;
-  int inputUpperBound;
+  T inputLowerBound;
+  T inputUpperBound;
   bool outputBounded;
-  int outputLowerBound;
-  int outputUpperBound;
+  T outputLowerBound;
+  T outputUpperBound;
   bool feedbackWrapped;
-  int feedbackWrapLowerBound;
-  int feedbackWrapUpperBound;
+  T feedbackWrapLowerBound;
+  T feedbackWrapUpperBound;
 
   bool timeFunctionRegistered;
-  int (*_pidSource)();
-  void (*_pidOutput)(int output);
+  T (*_pidSource)();
+  void (*_pidOutput)(T output);
   unsigned long (*_getSystemTime)();
 };
