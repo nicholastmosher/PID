@@ -198,3 +198,49 @@ the system.
     myPIDController.getError();
 
 These getter functions are updated at every run of `tick()`.
+
+## Templates
+
+In C++, using `templates` allows you to create classes that are prepared to
+handle different types of data.  This PID library uses templates to allow you
+to perform calculations using different types of numeric values.  For example:
+
+    PIDController<int> myIntPIDController(...);
+    PIDController<long> myLongPIDController(...);
+    PIDController<float> myFloatPIDController(...);
+    PIDController<double> myDoublePIDController(...);
+
+The data type passed into the angle brackets <> determines what type of value
+the PIDController will handle.  A PIDController<int> will need PIDSource
+and PIDOutput function pointers that are compliant with an int, but a
+PIDController<double> will need to comply with doubles.  For example:
+
+    //For an int PIDController//////////////////////////////////////////////////
+    int pidIntSource()
+    {
+      return mySensor.getIntValue();
+    }
+    void pidIntOutput(int output)
+    {
+      myRobot.setIntSpeed(output);
+    }
+    //P, I, and D represent constants in the user's program.
+    PIDController<int> myIntPIDController(P, I, D, pidIntSource, pidIntOutput);
+
+
+
+    //For a double PIDController////////////////////////////////////////////////
+    double pidDoubleSource()
+    {
+      return mySensor.getDoubleValue();
+    }
+    void pidDoubleOutput(double output)
+    {
+      myRobot.setDoubleSpeed(output);
+    }
+    //P, I, and D represent constants in the user's program.
+    PIDController<double> myDoublePIDController(P, I, D, pidDoubleSource, pidDoubleOutput);
+
+Additionally, the `getter` methods covered in the "Calculation Transparency"
+section and their corresponding `setter` methods will also adapt to handle the
+data type specified for the PIDController at construction.
