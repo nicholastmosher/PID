@@ -44,8 +44,10 @@ The `Proportional` component introduces a linear relationship between the
 `feedback` grows further away from the `target`, the `output` grows
 proportionally stronger.
 
-    Proportional component = (P Gain) * (error)
-                           = (P Gain) * (target - feedback)
+```
+Proportional component = (P Gain) * (error)
+                       = (P Gain) * (target - feedback)
+```
 
 ### Integral
 
@@ -60,7 +62,9 @@ on top of - the target, the integration will slowly build until it is
 powerful enough to overcome static resistances and move the system
 precisely to the target.
 
-    Integral component = (I Gain) * Integral of error over time
+```
+Integral component = (I Gain) * Integral of error over time
+```
 
 In this implementation, Integral is calculated with a running summation of the system's error, updated at each `tick()`.
 
@@ -79,7 +83,9 @@ the `target` too quickly or 2) if the `feedback` is moving away from the
 Now that we know what each component of PID contributes, the `output` of a
 `PIDController` can be nicely summed up with:
 
-    PID Output = Proportional component + Integral component + Derivative component
+```
+PID Output = Proportional component + Integral component + Derivative component
+```
 
 # Library Features
 
@@ -106,18 +112,20 @@ construction of a `PIDController`, two function pointers are passed in which
 represent functions created by the user which perform these tasks.  Below is an
 example of using `PIDSource` and `PIDOutput` functions:
 
-    int pidSource()
-    {
-      return mySensor.getValue();
-    }
+```cpp
+int pidSource()
+{
+  return mySensor.getValue();
+}
 
-    void pidOutput(int output)
-    {
-      myRobot.driveAtSpeed(output);
-    }
+void pidOutput(int output)
+{
+  myRobot.driveAtSpeed(output);
+}
 
-    //P, I, and D represent constants in the user's program
-    PIDController myPIDController(P, I, D, pidSource, pidOutput);
+// P, I, and D represent constants in the user's program
+PIDController myPIDController(P, I, D, pidSource, pidOutput);
+```
 
 `RegisterTimeFunction()` is a method that gives the user a chance to tell the
 `PIDController` how to retrieve system time.  This is useful because different
@@ -130,25 +138,26 @@ types are made to match.  Below are some examples:
 as an unsigned long, which matches the function pointer type for
 the registerTimeFunction() method.
 
-
-    myPIDController.registerTimeFunction(millis);
-
+```
+myPIDController.registerTimeFunction(millis);
+```
 
 * On a system that has no matching time-getting function, we can create a
 wrapper method that will convert the value and allow us to pass it as a
 parameter.
 
+```cpp
+// Let's assume this platform's time function is
+// double getSeconds();
 
-    //Let's assume this platform's time function is
-    //double getSeconds();
+unsigned long timeFunction()
+{
+  // Multiply by 1000 to convert seconds to milliseconds
+  return (unsigned long) (getSeconds() * 1000);
+}
 
-    unsigned long timeFunction()
-    {
-      //Multiply by 1000 to convert seconds to milliseconds
-      return (unsigned long) (getSeconds() * 1000);
-    }
-
-    myPIDController.registerTimeFunction(timeFunction);
+myPIDController.registerTimeFunction(timeFunction);
+```
 
 ## Feedback Wrap
 
@@ -170,12 +179,16 @@ accurately represent the physical state of the system.
 
 To setup Feedback Wrap (this automatically enables it as well):
 
-    myPIDController.setFeedbackWrapBounds(0, 360);
+```cpp
+myPIDController.setFeedbackWrapBounds(0, 360);
+```
 
 To disable or re-enable Feedback Wrap:
 
-    myPIDController.setFeedbackWrapped(false);
-    myPIDController.setFeedbackWrapped(true);
+```cpp
+myPIDController.setFeedbackWrapped(false);
+myPIDController.setFeedbackWrapped(true);
+```
 
 ## Calculation Transparency
 
@@ -186,16 +199,18 @@ operating under.  Additionally, methods are provided to display the contribution
 of each component of PID to the current output, which is very useful when tuning
 the system.
 
-    myPIDController.getProportionalComponent();
-    myPIDController.getIntegralComponent();
-    myPIDController.getDerivativeComponent();
-    myPIDController.getP(); //Returns P Gain
-    myPIDController.getI(); //Returns I Gain
-    myPIDController.getD(); //Returns D Gain
-    myPIDController.getTarget();
-    myPIDController.getFeedback();
-    myPIDController.getOutput();
-    myPIDController.getError();
+```cpp
+myPIDController.getProportionalComponent();
+myPIDController.getIntegralComponent();
+myPIDController.getDerivativeComponent();
+myPIDController.getP(); // Returns P Gain
+myPIDController.getI(); // Returns I Gain
+myPIDController.getD(); // Returns D Gain
+myPIDController.getTarget();
+myPIDController.getFeedback();
+myPIDController.getOutput();
+myPIDController.getError();
+```
 
 These getter functions are updated at every run of `tick()`.
 
@@ -205,41 +220,44 @@ In C++, using `templates` allows you to create classes that are prepared to
 handle different types of data.  This PID library uses templates to allow you
 to perform calculations using different types of numeric values.  For example:
 
-    PIDController<int> myIntPIDController(...);
-    PIDController<long> myLongPIDController(...);
-    PIDController<float> myFloatPIDController(...);
-    PIDController<double> myDoublePIDController(...);
+```cpp
+PIDController<int> myIntPIDController(...);
+PIDController<long> myLongPIDController(...);
+PIDController<float> myFloatPIDController(...);
+PIDController<double> myDoublePIDController(...);
+```
 
 The data type passed into the angle brackets <> determines what type of value
 the PIDController will handle.  A PIDController<int> will need PIDSource
 and PIDOutput function pointers that are compliant with an int, but a
 PIDController<double> will need to comply with doubles.  For example:
 
-    //For an int PIDController//////////////////////////////////////////////////
-    int pidIntSource()
-    {
-      return mySensor.getIntValue();
-    }
-    void pidIntOutput(int output)
-    {
-      myRobot.setIntSpeed(output);
-    }
-    //P, I, and D represent constants in the user's program.
-    PIDController<int> myIntPIDController(P, I, D, pidIntSource, pidIntOutput);
+```cpp
+// For an int PIDController
+int pidIntSource()
+{
+  return mySensor.getIntValue();
+}
+void pidIntOutput(int output)
+{
+  myRobot.setIntSpeed(output);
+}
+// P, I, and D represent constants in the user's program.
+PIDController<int> myIntPIDController(P, I, D, pidIntSource, pidIntOutput);
 
 
-
-    //For a double PIDController////////////////////////////////////////////////
-    double pidDoubleSource()
-    {
-      return mySensor.getDoubleValue();
-    }
-    void pidDoubleOutput(double output)
-    {
-      myRobot.setDoubleSpeed(output);
-    }
-    //P, I, and D represent constants in the user's program.
-    PIDController<double> myDoublePIDController(P, I, D, pidDoubleSource, pidDoubleOutput);
+// For a double PIDController
+double pidDoubleSource()
+{
+  return mySensor.getDoubleValue();
+}
+void pidDoubleOutput(double output)
+{
+  myRobot.setDoubleSpeed(output);
+}
+// P, I, and D represent constants in the user's program.
+PIDController<double> myDoublePIDController(P, I, D, pidDoubleSource, pidDoubleOutput);
+```
 
 Additionally, the `getter` methods covered in the "Calculation Transparency"
 section and their corresponding `setter` methods will also adapt to handle the
