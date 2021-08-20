@@ -78,18 +78,22 @@ PIDController<T>::PIDController(double p, double i, double d, T (*pidSource)(), 
   enabled = true;
   currentFeedback = 0;
   lastFeedback = 0;
+  error = 0;
   lastError = 0;
   currentTime = 0L;
   lastTime = 0L;
   integralCumulation = 0;
   maxCumulation = 30000;
+  cycleDerivative = 0;
+
   inputBounded = false;
-  outputBounded = false;
   inputLowerBound = 0;
   inputUpperBound = 0;
   outputBounded = false;
   outputLowerBound = 0;
   outputUpperBound = 0;
+  feedbackWrapped = false;
+
   timeFunctionRegistered = false;
   _pidSource = pidSource;
   _pidOutput = pidOutput;
