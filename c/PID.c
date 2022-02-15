@@ -174,7 +174,7 @@ void tick(PIDController *c) {
 			long deltaTime = c->currentTime - c->lastTime;
 
 			// Calculate the integral of the feedback data since last cycle.
-			int cycleIntegral = (c->lastError + c->error / 2) * deltaTime;
+			int cycleIntegral = ((c->lastError + c->error) / 2) * deltaTime;
 
 			// Add this cycle's integral to the integral cumulation.
 			c->integralCumulation += cycleIntegral;
