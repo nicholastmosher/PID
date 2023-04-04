@@ -262,3 +262,9 @@ PIDController<double> myDoublePIDController(P, I, D, pidDoubleSource, pidDoubleO
 Additionally, the `getter` methods covered in the "Calculation Transparency"
 section and their corresponding `setter` methods will also adapt to handle the
 data type specified for the PIDController at construction.
+
+# License
+
+This project is licensed under MIT or Apache-2.0, at your option.
+
+See [LICENSE-MIT](./LICENSE-MIT.md) or [LICENSE-APACHE](./LICENSE-APACHE.md) for more details.
