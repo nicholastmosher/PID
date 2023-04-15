@@ -69,7 +69,7 @@
  * @param (*pidOutput) The function pointer for delivering system output.
  */
 template <class T>
-PIDController<T>::PIDController(double p, double i, double d, std::function<T()> pidSource, std::function<void(T output)>)
+PIDController<T>::PIDController(double p, double i, double d, std::function<T()> pidSource, std::function<void(T output)> pidOutput)
 {
   _p = p;
   _i = i;
@@ -98,7 +98,7 @@ PIDController<T>::PIDController(double p, double i, double d, std::function<T()>
   timeFunctionRegistered = false;
   
   _pidSource.swap(pidSource);
-  _pidOutput.swap(pidSource);
+  _pidOutput.swap(pidOutput);
 }
 
 /**
@@ -109,12 +109,27 @@ PIDController<T>::PIDController(double p, double i, double d, std::function<T()>
  * resolution of control (for example, to be placed in the loop() method).
  */
 template <class T>
-void PIDController<T>::tick()
+T PIDController<T>::tick()
 {
+  // with a disabled controller, the tick function can still return the sensor value, this enables things like that:
+  /*
+    if (boardTempLimiter->tick() < MIN_VALUE)
+    {
+      if(boardTempLimiter->isEnabled())
+      {
+        boardTempLimiter->setEnabled(false); 
+      }
+    }
+    else
+    {
+      boardTempLimiter->setEnabled(true);
+    }
+  */
+  currentFeedback = _pidSource();
   if(enabled)
   {
     //Retrieve system feedback from user callback.
-    currentFeedback = _pidSource();
+    
 
     //Apply input bounds if necessary.
     if(inputBounded)
@@ -145,14 +160,14 @@ void PIDController<T>::tick()
        * unless all three are equal, in which case it does not matter which path
        * is taken.
        */
-      int regErr = target - currentFeedback;
-      int altErr1 = (target - feedbackWrapLowerBound) + (feedbackWrapUpperBound - currentFeedback);
-      int altErr2 = (feedbackWrapUpperBound - target) + (currentFeedback - feedbackWrapLowerBound);
+      float regErr = target - currentFeedback;
+      float altErr1 = (target - feedbackWrapLowerBound) + (feedbackWrapUpperBound - currentFeedback);
+      float altErr2 = (feedbackWrapUpperBound - target) + (currentFeedback - feedbackWrapLowerBound);
 
       //Calculate the absolute values of each error.
-      int regErrAbs = (regErr >= 0) ? regErr : -regErr;
-      int altErr1Abs = (altErr1 >= 0) ? altErr1 : -altErr1;
-      int altErr2Abs = (altErr2 >= 0) ? altErr2 : -altErr2;
+      float regErrAbs = (regErr >= 0) ? regErr : -regErr;
+      float altErr1Abs = (altErr1 >= 0) ? altErr1 : -altErr1;
+      float altErr2Abs = (altErr2 >= 0) ? altErr2 : -altErr2;
 
       //Use the error with the smallest absolute value
       if(regErrAbs <= altErr1Abs && regErr <= altErr2Abs) //If reguErrAbs is smallest
@@ -198,7 +213,7 @@ void PIDController<T>::tick()
     //If we have no way to retrieve system time, estimate calculations.
     else
     {
-      integralCumulation += error;
+        integralCumulation += error;
       cycleDerivative = (error - lastError);
     }
 
@@ -207,7 +222,7 @@ void PIDController<T>::tick()
     if(integralCumulation < -maxCumulation) integralCumulation = -maxCumulation;
 
     //Calculate the system output based on data and PID gains.
-    output = (int) ((error * _p) + (integralCumulation * _i) + (cycleDerivative * _d));
+    output = (float) ((error * _p) + (integralCumulation * _i) + (cycleDerivative * _d));
 
     //Save a record of this iteration's data.
     lastFeedback = currentFeedback;
@@ -222,6 +237,7 @@ void PIDController<T>::tick()
 
     _pidOutput(output);
   }
+  return currentFeedback;
 }
 
 /**
@@ -279,6 +295,7 @@ T PIDController<T>::getError()
 
 /**
  * Enables or disables this PIDController.
+ * a disabled controller will still call the sensor callback.
  * @param True to enable, False to disable.
  */
 template <class T>

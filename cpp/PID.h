@@ -7,8 +7,8 @@ template <class T>
 class PIDController
 {
 public:
-  PIDController(double p, double i, double d, std::function<T()> pidSource, std::function<void(T output)>);
-  void tick();
+  PIDController(double p, double i, double d, std::function<T()> pidSource, std::function<void(T output)> pidOutput);
+  T tick();
   void setTarget(T t);
   T getTarget();
   T getOutput();
