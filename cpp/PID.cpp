@@ -107,24 +107,30 @@ PIDController<T>::PIDController(double p, double i, double d, std::function<T()>
  * to the parent of this PIDController.  This method should be run as
  * fast as the source of the feedback in order to provide the highest
  * resolution of control (for example, to be placed in the loop() method).
+ *
+ * If this PIDController is disabled, calling `tick` will essentially call
+ * and return the value of `pidSource`, without applying any calculations
+ * to the internal state of the controller. This allows for convenient
+ * patterns like this:
+ *
+ * ```
+ * PIDController boardTempLimiter = ...
+ * if (boardTempLimiter->tick() < MIN_VALUE)
+ * {
+ *   if(boardTempLimiter->isEnabled())
+ *   {
+ *     boardTempLimiter->setEnabled(false);
+ *   }
+ * }
+ * else
+ * {
+ *   boardTempLimiter->setEnabled(true);
+ * }
+ * ```
  */
 template <class T>
 T PIDController<T>::tick()
 {
-  // with a disabled controller, the tick function can still return the sensor value, this enables things like that:
-  /*
-    if (boardTempLimiter->tick() < MIN_VALUE)
-    {
-      if(boardTempLimiter->isEnabled())
-      {
-        boardTempLimiter->setEnabled(false); 
-      }
-    }
-    else
-    {
-      boardTempLimiter->setEnabled(true);
-    }
-  */
   currentFeedback = _pidSource();
   if(enabled)
   {
