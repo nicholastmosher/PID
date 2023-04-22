@@ -1,5 +1,5 @@
 /**
- * @author Nick Mosher, <codewhisperer97@gmail.com>
+ * @author Nick Mosher, <nicholastmosher@gmail.com>
  *
  * A PID Controller is a method of system control in which a correctional output
  * is generated to guide the system toward a desired setpoint (aka target).
@@ -69,7 +69,8 @@
  * @param (*pidSource) The function pointer for retrieving system feedback.
  * @param (*pidOutput) The function pointer for delivering system output.
  */
-PIDController *createPIDController(double p, double i, double d, int (*pidSource)(void), void (*pidOutput)(int output)) {
+PIDController *createPIDController(double p, double i, double d, int (*pidSource)(void), void (*pidOutput)(int output))
+{
 
 	PIDController *controller = malloc(sizeof(PIDController));
 	controller->p = p;
@@ -106,23 +107,29 @@ PIDController *createPIDController(double p, double i, double d, int (*pidSource
  * fast as the source of the feedback in order to provide the highest
  * resolution of control (for example, to be placed in the loop() method).
  */
-void tick(PIDController *c) {
+void tick(PIDController *c)
+{
 
-	if(c->enabled) {
-		//Retrieve system feedback from user callback.
+	if (c->enabled)
+	{
+		// Retrieve system feedback from user callback.
 		c->currentFeedback = c->pidSource();
 
-		//Apply input bounds if necessary.
-		if(c->inputBounded) {
-			if(c->currentFeedback > c->inputUpperBound) c->currentFeedback = c->inputUpperBound;
-			if(c->currentFeedback < c->inputLowerBound) c->currentFeedback = c->inputLowerBound;
+		// Apply input bounds if necessary.
+		if (c->inputBounded)
+		{
+			if (c->currentFeedback > c->inputUpperBound)
+				c->currentFeedback = c->inputUpperBound;
+			if (c->currentFeedback < c->inputLowerBound)
+				c->currentFeedback = c->inputLowerBound;
 		}
 
 		/*
 		 * Feedback wrapping causes two distant numbers to appear adjacent to one
 		 * another for the purpose of calculating the system's error.
 		 */
-		if(c->feedbackWrapped) {
+		if (c->feedbackWrapped)
+		{
 
 			/*
 			 * There are three ways to traverse from one point to another in this setup.
@@ -150,23 +157,28 @@ void tick(PIDController *c) {
 			int altErr2Abs = (altErr2 >= 0) ? altErr2 : -altErr2;
 
 			// Use the error with the smallest absolute value
-			if(regErrAbs <= altErr1Abs && regErr <= altErr2Abs) {
+			if (regErrAbs <= altErr1Abs && regErr <= altErr2Abs)
+			{
 				c->error = regErr;
 			}
-			else if(altErr1Abs < regErrAbs && altErr1Abs < altErr2Abs) {
+			else if (altErr1Abs < regErrAbs && altErr1Abs < altErr2Abs)
+			{
 				c->error = altErr1Abs;
 			}
-			else if(altErr2Abs < regErrAbs && altErr2Abs < altErr1Abs) {
+			else if (altErr2Abs < regErrAbs && altErr2Abs < altErr1Abs)
+			{
 				c->error = altErr2Abs;
 			}
 		}
-		else {
+		else
+		{
 			// Calculate the error between the feedback and the target.
 			c->error = c->target - c->currentFeedback;
 		}
 
 		// If we have a registered way to retrieve the system time, use time in PID calculations.
-		if(c->timeFunctionRegistered) {
+		if (c->timeFunctionRegistered)
+		{
 			// Retrieve system time
 			c->currentTime = c->getSystemTime();
 
@@ -186,26 +198,32 @@ void tick(PIDController *c) {
 			c->lastTime = c->currentTime;
 		}
 		// If we have no way to retrieve system time, estimate calculations.
-		else {
+		else
+		{
 			c->integralCumulation += c->error;
 			c->cycleDerivative = (c->error - c->lastError);
 		}
 
 		// Prevent the integral cumulation from becoming overwhelmingly huge.
-		if(c->integralCumulation > c->maxCumulation) c->integralCumulation = c->maxCumulation;
-		if(c->integralCumulation < -c->maxCumulation) c->integralCumulation = -c->maxCumulation;
+		if (c->integralCumulation > c->maxCumulation)
+			c->integralCumulation = c->maxCumulation;
+		if (c->integralCumulation < -c->maxCumulation)
+			c->integralCumulation = -c->maxCumulation;
 
 		// Calculate the system output based on data and PID gains.
-		c->output = (int) ((c->error * c->p) + (c->integralCumulation * c->i) + (c->cycleDerivative * c->d));
+		c->output = (int)((c->error * c->p) + (c->integralCumulation * c->i) + (c->cycleDerivative * c->d));
 
 		// Save a record of this iteration's data.
 		c->lastFeedback = c->currentFeedback;
 		c->lastError = c->error;
 
 		// Trim the output to the bounds if needed.
-		if(c->outputBounded) {
-			if(c->output > c->outputUpperBound) c->output = c->outputUpperBound;
-			if(c->output < c->outputLowerBound) c->output = c->outputLowerBound;
+		if (c->outputBounded)
+		{
+			if (c->output > c->outputUpperBound)
+				c->output = c->outputUpperBound;
+			if (c->output < c->outputLowerBound)
+				c->output = c->outputLowerBound;
 		}
 
 		c->pidOutput(c->output);
@@ -216,10 +234,12 @@ void tick(PIDController *c) {
  * Enables or disables this PIDController.
  * @param True to enable, False to disable.
  */
-void setEnabled(PIDController *controller, uint8_t enabled) {
+void setEnabled(PIDController *controller, uint8_t enabled)
+{
 
 	// If the PIDController was enabled and is being disabled.
-	if(!enabled && controller->enabled) {
+	if (!enabled && controller->enabled)
+	{
 		controller->output = 0;
 		controller->integralCumulation = 0;
 	}
@@ -230,7 +250,8 @@ void setEnabled(PIDController *controller, uint8_t enabled) {
  * Returns the value that the Proportional component is contributing to the output.
  * @return The value that the Proportional component is contributing to the output.
  */
-int getProportionalComponent(PIDController *controller) {
+int getProportionalComponent(PIDController *controller)
+{
 	return (controller->error * controller->p);
 }
 
@@ -238,7 +259,8 @@ int getProportionalComponent(PIDController *controller) {
  * Returns the value that the Integral component is contributing to the output.
  * @return The value that the Integral component is contributing to the output.
  */
-int getIntegralComponent(PIDController *controller) {
+int getIntegralComponent(PIDController *controller)
+{
 	return (controller->integralCumulation * controller->i);
 }
 
@@ -246,7 +268,8 @@ int getIntegralComponent(PIDController *controller) {
  * Returns the value that the Derivative component is contributing to the output.
  * @return The value that the Derivative component is contributing to the output.
  */
-int getDerivativeComponent(PIDController *controller) {
+int getDerivativeComponent(PIDController *controller)
+{
 	return (controller->cycleDerivative * controller->d);
 }
 
@@ -254,15 +277,18 @@ int getDerivativeComponent(PIDController *controller) {
  * Sets the maximum value that the integral cumulation can reach.
  * @param max The maximum value of the integral cumulation.
  */
-void setMaxIntegralCumulation(PIDController *controller, int max) {
+void setMaxIntegralCumulation(PIDController *controller, int max)
+{
 
 	// If the new max value is less than 0, invert to make positive.
-	if(max < 0) {
+	if (max < 0)
+	{
 		max = -max;
 	}
 
 	// If the new max is not more than 1 then the cumulation is useless.
-	if(max > 1) {
+	if (max > 1)
+	{
 		controller->maxCumulation = max;
 	}
 }
@@ -274,9 +300,11 @@ void setMaxIntegralCumulation(PIDController *controller, int max) {
  * @param lower The lower input bound.
  * @param upper The upper input bound.
  */
-void setInputBounds(PIDController *controller, int lower, int upper) {
+void setInputBounds(PIDController *controller, int lower, int upper)
+{
 
-	if(upper > lower) {
+	if (upper > lower)
+	{
 		controller->inputBounded = 1;
 		controller->inputUpperBound = upper;
 		controller->inputLowerBound = lower;
@@ -290,9 +318,11 @@ void setInputBounds(PIDController *controller, int lower, int upper) {
  * @param lower The lower output bound.
  * @param upper The upper output bound.
  */
-void setOutputBounds(PIDController *controller, int lower, int upper) {
+void setOutputBounds(PIDController *controller, int lower, int upper)
+{
 
-	if(upper > lower) {
+	if (upper > lower)
+	{
 		controller->outputBounded = 1;
 		controller->outputLowerBound = lower;
 		controller->outputUpperBound = upper;
@@ -306,7 +336,8 @@ void setOutputBounds(PIDController *controller, int lower, int upper) {
  * @param lower The lower wrap bound.
  * @param upper The upper wrap bound.
  */
-void setFeedbackWrapBounds(PIDController *controller, int lower, int upper) {
+void setFeedbackWrapBounds(PIDController *controller, int lower, int upper)
+{
 
 	// Make sure no value outside this circular range is ever input.
 	setInputBounds(controller, lower, upper);

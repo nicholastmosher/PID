@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-typedef struct pid_controller {
+typedef struct pid_controller
+{
 
 	double p;
 	double i;

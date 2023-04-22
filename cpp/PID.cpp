@@ -1,5 +1,5 @@
 /**
- * @author Nick Mosher, <codewhisperer97@gmail.com>
+ * @author Nick Mosher, <nicholastmosher@gmail.com>
  *
  * A PID Controller is a method of system control in which a correctional output
  * is generated to guide the system toward a desired setpoint (aka target).
@@ -56,7 +56,6 @@
 
 #include "PID.h"
 
-
 /**
  * Constructs the PIDController object with PID Gains and function pointers
  * for retrieving feedback (pidSource) and delivering output (pidOutput).
@@ -96,7 +95,7 @@ PIDController<T>::PIDController(double p, double i, double d, std::function<T()>
   feedbackWrapped = false;
 
   timeFunctionRegistered = false;
-  
+
   _pidSource.swap(pidSource);
   _pidOutput.swap(pidOutput);
 }
@@ -132,23 +131,24 @@ template <class T>
 T PIDController<T>::tick()
 {
   currentFeedback = _pidSource();
-  if(enabled)
+  if (enabled)
   {
-    //Retrieve system feedback from user callback.
-    
+    // Retrieve system feedback from user callback.
 
-    //Apply input bounds if necessary.
-    if(inputBounded)
+    // Apply input bounds if necessary.
+    if (inputBounded)
     {
-      if(currentFeedback > inputUpperBound) currentFeedback = inputUpperBound;
-      if(currentFeedback < inputLowerBound) currentFeedback = inputLowerBound;
+      if (currentFeedback > inputUpperBound)
+        currentFeedback = inputUpperBound;
+      if (currentFeedback < inputLowerBound)
+        currentFeedback = inputLowerBound;
     }
 
     /*
      * Feedback wrapping causes two distant numbers to appear adjacent to one
      * another for the purpose of calculating the system's error.
      */
-    if(feedbackWrapped)
+    if (feedbackWrapped)
     {
       /*
        * There are three ways to traverse from one point to another in this setup.
@@ -170,75 +170,79 @@ T PIDController<T>::tick()
       float altErr1 = (target - feedbackWrapLowerBound) + (feedbackWrapUpperBound - currentFeedback);
       float altErr2 = (feedbackWrapUpperBound - target) + (currentFeedback - feedbackWrapLowerBound);
 
-      //Calculate the absolute values of each error.
+      // Calculate the absolute values of each error.
       float regErrAbs = (regErr >= 0) ? regErr : -regErr;
       float altErr1Abs = (altErr1 >= 0) ? altErr1 : -altErr1;
       float altErr2Abs = (altErr2 >= 0) ? altErr2 : -altErr2;
 
-      //Use the error with the smallest absolute value
-      if(regErrAbs <= altErr1Abs && regErr <= altErr2Abs) //If reguErrAbs is smallest
+      // Use the error with the smallest absolute value
+      if (regErrAbs <= altErr1Abs && regErr <= altErr2Abs) // If reguErrAbs is smallest
       {
         error = regErr;
       }
-      else if(altErr1Abs < regErrAbs && altErr1Abs < altErr2Abs) //If altErr1Abs is smallest
+      else if (altErr1Abs < regErrAbs && altErr1Abs < altErr2Abs) // If altErr1Abs is smallest
       {
         error = altErr1Abs;
       }
-      else if(altErr2Abs < regErrAbs && altErr2Abs < altErr1Abs) //If altErr2Abs is smallest
+      else if (altErr2Abs < regErrAbs && altErr2Abs < altErr1Abs) // If altErr2Abs is smallest
       {
         error = altErr2Abs;
       }
     }
     else
     {
-      //Calculate the error between the feedback and the target.
+      // Calculate the error between the feedback and the target.
       error = target - currentFeedback;
     }
 
-    //If we have a registered way to retrieve the system time, use time in PID calculations.
-    if(timeFunctionRegistered)
+    // If we have a registered way to retrieve the system time, use time in PID calculations.
+    if (timeFunctionRegistered)
     {
-      //Retrieve system time
+      // Retrieve system time
       currentTime = _getSystemTime();
 
-      //Calculate time since last tick() cycle.
+      // Calculate time since last tick() cycle.
       long deltaTime = currentTime - lastTime;
 
-      //Calculate the integral of the feedback data since last cycle.
+      // Calculate the integral of the feedback data since last cycle.
       int cycleIntegral = ((lastError + error) / 2) * deltaTime;
 
-      //Add this cycle's integral to the integral cumulation.
+      // Add this cycle's integral to the integral cumulation.
       integralCumulation += cycleIntegral;
 
-      //Calculate the slope of the line with data from the current and last cycles.
+      // Calculate the slope of the line with data from the current and last cycles.
       cycleDerivative = (error - lastError) / deltaTime;
 
-      //Save time data for next iteration.
+      // Save time data for next iteration.
       lastTime = currentTime;
     }
-    //If we have no way to retrieve system time, estimate calculations.
+    // If we have no way to retrieve system time, estimate calculations.
     else
     {
-        integralCumulation += error;
+      integralCumulation += error;
       cycleDerivative = (error - lastError);
     }
 
-    //Prevent the integral cumulation from becoming overwhelmingly huge.
-    if(integralCumulation > maxCumulation) integralCumulation = maxCumulation;
-    if(integralCumulation < -maxCumulation) integralCumulation = -maxCumulation;
+    // Prevent the integral cumulation from becoming overwhelmingly huge.
+    if (integralCumulation > maxCumulation)
+      integralCumulation = maxCumulation;
+    if (integralCumulation < -maxCumulation)
+      integralCumulation = -maxCumulation;
 
-    //Calculate the system output based on data and PID gains.
-    output = (float) ((error * _p) + (integralCumulation * _i) + (cycleDerivative * _d));
+    // Calculate the system output based on data and PID gains.
+    output = (float)((error * _p) + (integralCumulation * _i) + (cycleDerivative * _d));
 
-    //Save a record of this iteration's data.
+    // Save a record of this iteration's data.
     lastFeedback = currentFeedback;
     lastError = error;
 
-    //Trim the output to the bounds if needed.
-    if(outputBounded)
+    // Trim the output to the bounds if needed.
+    if (outputBounded)
     {
-      if(output > outputUpperBound) output = outputUpperBound;
-      if(output < outputLowerBound) output = outputLowerBound;
+      if (output > outputUpperBound)
+        output = outputUpperBound;
+      if (output < outputLowerBound)
+        output = outputLowerBound;
     }
 
     _pidOutput(output);
@@ -307,8 +311,8 @@ T PIDController<T>::getError()
 template <class T>
 void PIDController<T>::setEnabled(bool e)
 {
-  //If the PIDController was enabled and is being disabled.
-  if(!e && enabled)
+  // If the PIDController was enabled and is being disabled.
+  if (!e && enabled)
   {
     output = 0;
     integralCumulation = 0;
@@ -333,7 +337,7 @@ bool PIDController<T>::isEnabled()
 template <class T>
 T PIDController<T>::getProportionalComponent()
 {
-  return (T) (error * _p);
+  return (T)(error * _p);
 }
 
 /**
@@ -343,7 +347,7 @@ T PIDController<T>::getProportionalComponent()
 template <class T>
 T PIDController<T>::getIntegralComponent()
 {
-  return (T) (integralCumulation * _i);
+  return (T)(integralCumulation * _i);
 }
 
 /**
@@ -353,7 +357,7 @@ T PIDController<T>::getIntegralComponent()
 template <class T>
 T PIDController<T>::getDerivativeComponent()
 {
-  return (T) (cycleDerivative * _d);
+  return (T)(cycleDerivative * _d);
 }
 
 /**
@@ -363,14 +367,14 @@ T PIDController<T>::getDerivativeComponent()
 template <class T>
 void PIDController<T>::setMaxIntegralCumulation(T max)
 {
-  //If the new max value is less than 0, invert to make positive.
-  if(max < 0)
+  // If the new max value is less than 0, invert to make positive.
+  if (max < 0)
   {
     max = -max;
   }
 
-  //If the new max is not more than 1 then the cumulation is useless.
-  if(max > 1)
+  // If the new max is not more than 1 then the cumulation is useless.
+  if (max > 1)
   {
     maxCumulation = max;
   }
@@ -428,7 +432,7 @@ bool PIDController<T>::isInputBounded()
 template <class T>
 void PIDController<T>::setInputBounds(T lower, T upper)
 {
-  if(upper > lower)
+  if (upper > lower)
   {
     inputBounded = true;
     inputUpperBound = upper;
@@ -487,7 +491,7 @@ bool PIDController<T>::isOutputBounded()
 template <class T>
 void PIDController<T>::setOutputBounds(T lower, T upper)
 {
-  if(upper > lower)
+  if (upper > lower)
   {
     outputBounded = true;
     outputLowerBound = lower;
@@ -550,7 +554,7 @@ bool PIDController<T>::isFeedbackWrapped()
 template <class T>
 void PIDController<T>::setFeedbackWrapBounds(T lower, T upper)
 {
-  //Make sure no value outside this circular range is ever input.
+  // Make sure no value outside this circular range is ever input.
   setInputBounds(lower, upper);
 
   feedbackWrapped = true;
