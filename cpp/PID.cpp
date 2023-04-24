@@ -176,7 +176,7 @@ T PIDController<T>::tick()
       float altErr2Abs = (altErr2 >= 0) ? altErr2 : -altErr2;
 
       // Use the error with the smallest absolute value
-      if (regErrAbs <= altErr1Abs && regErr <= altErr2Abs) // If reguErrAbs is smallest
+      if (regErrAbs <= altErr1Abs && regErrAbs <= altErr2Abs) // If reguErrAbs is smallest
       {
         error = regErr;
       }
