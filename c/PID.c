@@ -157,7 +157,7 @@ void tick(PIDController *c)
 			int altErr2Abs = (altErr2 >= 0) ? altErr2 : -altErr2;
 
 			// Use the error with the smallest absolute value
-			if (regErrAbs <= altErr1Abs && regErr <= altErr2Abs)
+			if (regErrAbs <= altErr1Abs && regErrAbs <= altErr2Abs)
 			{
 				c->error = regErr;
 			}
